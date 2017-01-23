@@ -16,6 +16,9 @@ set(SUMMERTIME_LIBRARIES ${CURL_LIBRARIES} ${JSONCPP_LIBRARIES}
 	${NOTIFY_LIBRARIES})
 
 add_executable(summertime ${SOURCE_FILES})
+install(TARGETS summertime RUNTIME DESTINATION bin)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/summertime.conf DESTINATION etc)
+
 add_library(libsummertime SHARED ${SOURCE_FILES})
 set_target_properties(libsummertime PROPERTIES OUTPUT_NAME summertime)
 

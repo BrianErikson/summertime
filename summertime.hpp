@@ -2,6 +2,6 @@
 
 using namespace std;
 
-string fetchWeatherJSON();
-
-string fetchNotificationContent();
+string fetchWeatherJSON(string areaId);
+string fetchNotificationContent(string areaId);
+string parseAreaId();

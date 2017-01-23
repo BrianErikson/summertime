@@ -6,7 +6,7 @@ using namespace std;
 int main() {
 	string content;
 	try {
-		content = fetchNotificationContent();
+		content = fetchNotificationContent(parseAreaId());
 	} catch (const char *msg) {
 		cerr << msg << endl;
 		return 1;

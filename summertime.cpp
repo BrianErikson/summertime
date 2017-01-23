@@ -5,6 +5,7 @@
 #include <sstream>
 #include <libnotify/notify.h>
 #include <libnotify/notification.h>
+#include <fstream>
 
 using namespace std;
 
@@ -13,16 +14,57 @@ static size_t curlCallback(void *contents, size_t size, size_t nmemb, void *user
     return size * nmemb;
 }
 
-string fetchWeatherJSON() {
+string parseAreaId() {
+	stringstream ss;
+	ss << getenv("HOME");
+	ss << "/.summertime.conf";
+
+	ifstream file(ss.str());
+	if (!file.good()) {
+		file.open("/etc/summertime.conf");
+		if (!file.good()) {
+			file.open("/usr/local/etc/summertime.conf");
+			if (!file.good()) {
+				throw "Configuration file is missing";
+			}
+		}
+	}
+
+	string line;
+	string areaStr;
+	while (getline(file, line)) {
+		if (line.find('#') == string::npos) {
+			areaStr = line;
+			break;
+		}
+	}
+	file.close();
+
+	if (areaStr.empty()) {
+		throw "Uncomment your area in summertime.conf in order to request local weather";
+	}
+
+	while(areaStr[0] == ' ') {
+		areaStr = areaStr.substr(1, areaStr.length() - 1);
+	}
+
+	return areaStr.substr(0, areaStr.find_first_of(" ", 0));
+}
+
+string fetchWeatherJSON(string areaId) {
     CURL *curl;
     CURLcode res;
     string curlBuffer;
+	stringstream ss;
+
+	ss << "api.openweathermap.org/data/2.5/forecast?id=" << areaId;
+	ss << "&units=imperial&appid=91cdcd239b9914515bdb4b9134590c11";
 
     curl = curl_easy_init();
     if (!curl) {
         throw "cURL could not be initialized";
     }
-    curl_easy_setopt(curl, CURLOPT_URL, "api.openweathermap.org/data/2.5/forecast?id=5781783&units=imperial&appid=91cdcd239b9914515bdb4b9134590c11");
+    curl_easy_setopt(curl, CURLOPT_URL, ss.str().c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &curlBuffer);
     res = curl_easy_perform(curl);
@@ -39,17 +81,17 @@ string fetchWeatherJSON() {
     return curlBuffer;
 }
 
-string fetchNotificationContent() {
+string fetchNotificationContent(string areaId) {
     Json::Value root;
     Json::Reader reader;
     string weatherJSON;
     try {
-        weatherJSON = fetchWeatherJSON();
+        weatherJSON = fetchWeatherJSON(areaId);
     } catch (const char *msg) {
         throw msg;
     }
 
-    reader.parse(fetchWeatherJSON(), root, false);
+    reader.parse(fetchWeatherJSON(areaId), root, false);
     if (!reader.getFormattedErrorMessages().empty()) {
         throw "Could not parse fetched JSON";
     }
@@ -92,7 +134,7 @@ string fetchNotificationContent() {
 int main() {
 	string content;
 	try {
-		content = fetchNotificationContent();
+		content = fetchNotificationContent(parseAreaId());
 	} catch (const char *msg) {
 		cerr << msg << endl;
 		return 1;
